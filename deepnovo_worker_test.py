@@ -311,7 +311,10 @@ class WorkerTest(object):
         line_split = re.split('\t|\n', line)
         predicted = {}
         predicted["feature_id"] = line_split[col_feature_id]
-        predicted["feature_area"] = float(line_split[col_feature_area])
+        try:
+          predicted["feature_area"] = float(line_split[col_feature_area])
+        except Exception as e:
+          predicted["feature_area"] = 0.0 #TODO look into this
         predicted["scan_list_middle"] = line_split[col_scan_list_middle]
         predicted["scan_list_original"] = line_split[col_scan_list_original]
         if line_split[col_sequence]: # not empty sequence
@@ -380,10 +383,17 @@ class WorkerTest(object):
     with open(self.target_file, 'r') as handle:
       header_line = handle.readline()
       header = header_line.strip().split(',')
+      
+      new_header = []
+      for col in header:
+        new_col = col.replace('"', '')
+        new_header.append(new_col)
+      header = new_header
+          
       raw_sequence_index = header.index(deepnovo_config.col_raw_sequence)
       for line in handle:
         line = re.split(',|\r|\n', line)
-        feature_id = line[0]
+        feature_id = line[11].replace('"', '') + line[10]
         raw_sequence = line[raw_sequence_index]
         assert raw_sequence, "Error: wrong target format."
         peptide = self._parse_sequence(raw_sequence)
@@ -402,18 +412,33 @@ class WorkerTest(object):
     index = 0
     while index < raw_sequence_len:
       if raw_sequence[index] == "(":
-        if peptide[-1] == "C" and raw_sequence[index:index+8] == "(+57.02)":
+        if peptide[-1] == "C" and raw_sequence[index:index + 16] == "(+57.02)(+42.01)":
+          peptide[-1] = "C(Carbamidomethylation,Acetylation)"
+          index += 16
+        elif peptide[-1] == "C" and raw_sequence[index:index + 8] == "(+57.02)":
           peptide[-1] = "C(Carbamidomethylation)"
           index += 8
-        elif peptide[-1] == 'M' and raw_sequence[index:index+8] == "(+15.99)":
+        elif peptide[-1] == 'M' and raw_sequence[index:index + 16] == "(+42.01)(+15.99)":
+          peptide[-1] = 'M(Acetylation,Oxidation)'
+          index += 16
+        elif peptide[-1] == 'M' and raw_sequence[index:index + 8] == "(+15.99)":
           peptide[-1] = 'M(Oxidation)'
           index += 8
-        elif peptide[-1] == 'N' and raw_sequence[index:index+6] == "(+.98)":
+        elif peptide[-1] == 'N' and raw_sequence[index:index + 15] == "(+42.01)(+0.98)":
+          peptide[-1] = 'N(Acetylation,Deamidation)'
+          index += 15
+        elif peptide[-1] == 'N' and raw_sequence[index:index + 7] == "(+0.98)":
           peptide[-1] = 'N(Deamidation)'
-          index += 6
-        elif peptide[-1] == 'Q' and raw_sequence[index:index+6] == "(+.98)":
+          index += 7
+        elif peptide[-1] == 'Q' and raw_sequence[index:index + 15] == "(+42.01)(+0.98)":
+          peptide[-1] = 'Q(Acetylation,Deamidation)'
+          index += 15
+        elif peptide[-1] == 'Q' and raw_sequence[index:index + 7] == "(+0.98)":
           peptide[-1] = 'Q(Deamidation)'
-          index += 6
+          index += 7
+        elif raw_sequence[index:index+8] == "(+42.01)":
+          peptide[-1] = peptide[-1] + '(Acetylation)'
+          index += 8
         else: # unknown modification
           print("ERROR: unknown modification!")
           print("raw_sequence = ", raw_sequence)

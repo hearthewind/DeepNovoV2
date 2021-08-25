@@ -45,7 +45,8 @@ PAD_ID = 0
 GO_ID = 1
 EOS_ID = 2
 assert PAD_ID == 0
-vocab_reverse = ['A',
+
+vocab_reverse_old = ['A',
                  'R',
                  'N',
                  'N(Deamidation)',
@@ -69,6 +70,55 @@ vocab_reverse = ['A',
                  'W',
                  'Y',
                  'V',
+                ]
+
+vocab_reverse = ['A',
+                 'A(Acetylation)',
+                 'R',
+                 'R(Acetylation)',
+                 'N',
+                 'N(Deamidation)',
+                 'N(Acetylation)',
+                 'N(Acetylation,Deamidation)',
+                 'D',
+                 'D(Acetylation)',
+                 #~ 'C',
+                 'C(Carbamidomethylation)',
+                 'C(Carbamidomethylation,Acetylation)',
+                 'E',
+                 'E(Acetylation)',
+                 'Q',
+                 'Q(Deamidation)',
+                 'Q(Acetylation)',
+                 'Q(Acetylation,Deamidation)',
+                 'G',
+                 'G(Acetylation)',
+                 'H',
+                 'H(Acetylation)',
+                 'I',
+                 'I(Acetylation)',
+                 'L',
+                 'L(Acetylation)',
+                 'K',
+                 'K(Acetylation)',
+                 'M',
+                 'M(Oxidation)',
+                 'M(Acetylation)',
+                 'M(Acetylation,Oxidation)',
+                 'F',
+                 'F(Acetylation)',
+                 'P',
+                 'P(Acetylation)',
+                 'S',
+                 'S(Acetylation)',
+                 'T',
+                 'T(Acetylation)',
+                 'W',
+                 'W(Acetylation)',
+                 'Y',
+                 'Y(Acetylation)',
+                 'V',
+                 'V(Acetylation)',
                 ]
 
 vocab_reverse = _START_VOCAB + vocab_reverse
@@ -97,30 +147,53 @@ mass_AA = {'_PAD': 0.0,
            '_GO': mass_N_terminus-mass_H,
            '_EOS': mass_C_terminus+mass_H,
            'A': 71.03711, # 0
+           'A(Acetylation)': 113.04711,
            'R': 156.10111, # 1
+           'R(Acetylation)': 198.11111,
            'N': 114.04293, # 2
            'N(Deamidation)': 115.02695,
+           'N(Acetylation)': 156.05293,
+           'N(Acetylation,Deamidation)': 157.03695,
            'D': 115.02694, # 3
+           'D(Acetylation)': 157.03694,
            #~ 'C(Carbamidomethylation)': 103.00919, # 4
            'C(Carbamidomethylation)': 160.03065, # C(+57.02)
+           'C(Carbamidomethylation,Acetylation)': 202.04065,
            #~ 'C(Carbamidomethylation)': 161.01919, # C(+58.01) # orbi
            'E': 129.04259, # 5
+           'E(Acetylation)': 171.05259,
            'Q': 128.05858, # 6
            'Q(Deamidation)': 129.0426,
+           'Q(Acetylation)': 170.06858,
+           'Q(Acetylation,Deamidation)': 171.0526,
            'G': 57.02146, # 7
+           'G(Acetylation)': 99.03146,
            'H': 137.05891, # 8
+           'H(Acetylation)': 179.06891,
            'I': 113.08406, # 9
+           'I(Acetylation)': 155.09406,
            'L': 113.08406, # 10
+           'L(Acetylation)': 155.09406,
            'K': 128.09496, # 11
+           'K(Acetylation)': 170.10496,
            'M': 131.04049, # 12
            'M(Oxidation)': 147.0354,
+           'M(Acetylation)': 173.05049,
+           'M(Acetylation,Oxidation)': 189.0454,
            'F': 147.06841, # 13
+           'F(Acetylation)': 189.07841,
            'P': 97.05276, # 14
+           'P(Acetylation)': 139.06276,
            'S': 87.03203, # 15
+           'S(Acetylation)': 129.04203,
            'T': 101.04768, # 16
+           'T(Acetylation)': 143.05768,
            'W': 186.07931, # 17
+           'W(Acetylation)': 228.08931,
            'Y': 163.06333, # 18
+           'Y(Acetylation)': 204.07333,
            'V': 99.06841, # 19
+           'V(Acetylation)': 141.07841,
           }
 
 mass_ID = [mass_AA[vocab_reverse[x]] for x in range(vocab_size)]
@@ -224,15 +297,15 @@ print("max_gradient_norm ", max_gradient_norm)
 knapsack_file = "knapsack.npy"
 topk_output = 1
 # training/testing/decoding files
-input_spectrum_file_train = "ABRF_DDA/spectrums.mgf"
-input_feature_file_train = "ABRF_DDA/features.csv.identified.train.nodup"
-input_spectrum_file_valid = "ABRF_DDA/spectrums.mgf"
-input_feature_file_valid = "ABRF_DDA/features.csv.identified.valid.nodup"
-input_spectrum_file_test = "ABRF_DDA/spectrums.mgf"
-input_feature_file_test = "ABRF_DDA/features.csv.identified.test.nodup"
+input_spectrum_file_train = "./westlake_test_data_with_acetylation/"
+input_feature_file_train = "./westlake_test_data_with_acetylation/db.psms.csv"
+input_spectrum_file_valid = "./westlake_test_data_with_acetylation/"
+input_feature_file_valid = "./westlake_test_data_with_acetylation/db.psms.csv"
+input_spectrum_file_test = "./westlake_test_data_with_acetylation/"
+input_feature_file_test = "./westlake_test_data_with_acetylation/db.psms.csv"
 # denovo files
-denovo_input_spectrum_file = "ABRF_DDA/spectrums.mgf"
-denovo_input_feature_file = "ABRF_DDA/features.csv.identified.test.nodup"
+denovo_input_spectrum_file = "./westlake_test_data_with_acetylation/"
+denovo_input_feature_file = "./westlake_test_data_with_acetylation/db.psms.csv"
 
 denovo_output_file = denovo_input_feature_file + ".deepnovo_denovo"
 
@@ -246,13 +319,13 @@ scan2fea_file = predicted_file + ".scan2fea"
 multifea_file = predicted_file + ".multifea"
 
 # feature file column format
-col_feature_id = "spec_group_id"
 col_precursor_mz = "m/z"
 col_precursor_charge = "z"
-col_rt_mean = "rt_mean"
-col_raw_sequence = "seq"
-col_scan_list = "scans"
-col_feature_area = "feature area"
+col_rt_mean = "RT"
+col_raw_sequence = "Peptide"
+col_scan_list = "Scan"
+col_file = "Source File"
+col_feature_area = "Area"
 
 # predicted file column format
 pcol_feature_id = 0

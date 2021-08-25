@@ -20,18 +20,33 @@ def parse_raw_sequence(raw_sequence: str):
     index = 0
     while index < raw_sequence_len:
         if raw_sequence[index] == "(":
-            if peptide[-1] == "C" and raw_sequence[index:index + 8] == "(+57.02)":
+            if peptide[-1] == "C" and raw_sequence[index:index + 16] == "(+57.02)(+42.01)":
+                peptide[-1] = "C(Carbamidomethylation,Acetylation)"
+                index += 16
+            elif peptide[-1] == "C" and raw_sequence[index:index + 8] == "(+57.02)":
                 peptide[-1] = "C(Carbamidomethylation)"
                 index += 8
+            elif peptide[-1] == 'M' and raw_sequence[index:index + 16] == "(+42.01)(+15.99)":
+                peptide[-1] = 'M(Acetylation,Oxidation)'
+                index += 16
             elif peptide[-1] == 'M' and raw_sequence[index:index + 8] == "(+15.99)":
                 peptide[-1] = 'M(Oxidation)'
                 index += 8
-            elif peptide[-1] == 'N' and raw_sequence[index:index + 6] == "(+.98)":
+            elif peptide[-1] == 'N' and raw_sequence[index:index + 15] == "(+42.01)(+0.98)":
+                peptide[-1] = 'N(Acetylation,Deamidation)'
+                index += 15
+            elif peptide[-1] == 'N' and raw_sequence[index:index + 7] == "(+0.98)":
                 peptide[-1] = 'N(Deamidation)'
-                index += 6
-            elif peptide[-1] == 'Q' and raw_sequence[index:index + 6] == "(+.98)":
+                index += 7
+            elif peptide[-1] == 'Q' and raw_sequence[index:index + 15] == "(+42.01)(+0.98)":
+                peptide[-1] = 'Q(Acetylation,Deamidation)'
+                index += 15
+            elif peptide[-1] == 'Q' and raw_sequence[index:index + 7] == "(+0.98)":
                 peptide[-1] = 'Q(Deamidation)'
-                index += 6
+                index += 7
+            elif raw_sequence[index:index+8] == "(+42.01)":
+                peptide[-1] = peptide[-1] + '(Acetylation)'
+                index += 8
             else:  # unknown modification
                 logger.warning(f"unknown modification in seq {raw_sequence}")
                 return False, peptide
@@ -62,6 +77,7 @@ class DDAFeature:
     z: float
     rt_mean: float
     peptide: list
+    file:str
     scan: str
     mass: float
     feature_area: str
@@ -88,21 +104,21 @@ class TrainData:
 
 
 class DeepNovoTrainDataset(Dataset):
-    def __init__(self, feature_filename, spectrum_filename, transform=None):
+    def __init__(self, feature_filename, spectrum_foldername, transform=None):
         """
         read all feature information and store in memory,
         :param feature_filename:
         :param spectrum_filename:
         """
-        logger.info(f"input spectrum file: {spectrum_filename}")
+        logger.info(f"input spectrum folder: {spectrum_foldername}")
         logger.info(f"input feature file: {feature_filename}")
-        self.spectrum_filename = spectrum_filename
+        self.spectrum_foldername = spectrum_foldername
         self.input_spectrum_handle = None
         self.feature_list = []
         self.spectrum_location_dict = {}
         self.transform = transform
         # read spectrum location file
-        spectrum_location_file = spectrum_filename + '.location.pytorch.pkl'
+        spectrum_location_file = spectrum_foldername + 'spectrum_location.pytorch.pkl'
         if os.path.exists(spectrum_location_file):
             logger.info(f"read cached spectrum locations")
             with open(spectrum_location_file, 'rb') as fr:
@@ -110,16 +126,20 @@ class DeepNovoTrainDataset(Dataset):
         else:
             logger.info("build spectrum location from scratch")
             spectrum_location_dict = {}
-            line = True
-            with open(spectrum_filename, 'r') as f:
-                while line:
-                    current_location = f.tell()
-                    line = f.readline()
-                    if "BEGIN IONS" in line:
-                        spectrum_location = current_location
-                    elif "SCANS=" in line:
-                        scan = re.split('[=\r\n]', line)[1]
-                        spectrum_location_dict[scan] = spectrum_location
+            spectrum_files = os.listdir(spectrum_foldername)
+            
+            for spectrum_file in spectrum_files:
+                if spectrum_file.endswith('.mgf'):
+                    line = True
+                    with open(spectrum_foldername + spectrum_file, 'r') as f:
+                        while line:
+                            current_location = f.tell()
+                            line = f.readline()
+                            if "BEGIN IONS" in line:
+                                spectrum_location = current_location
+                            elif "SCANS=" in line:
+                                scan = re.split('[=\r\n]', line)[1]
+                                spectrum_location_dict[(spectrum_file, scan)] = spectrum_location
             self.spectrum_location_dict = spectrum_location_dict
             with open(spectrum_location_file, 'wb') as fw:
                 pickle.dump(self.spectrum_location_dict, fw)
@@ -131,12 +151,12 @@ class DeepNovoTrainDataset(Dataset):
         with open(feature_filename, 'r') as fr:
             reader = csv.reader(fr, delimiter=',')
             header = next(reader)
-            feature_id_index = header.index(deepnovo_config.col_feature_id)
             mz_index = header.index(deepnovo_config.col_precursor_mz)
             z_index = header.index(deepnovo_config.col_precursor_charge)
             rt_mean_index = header.index(deepnovo_config.col_rt_mean)
             seq_index = header.index(deepnovo_config.col_raw_sequence)
             scan_index = header.index(deepnovo_config.col_scan_list)
+            file_index = header.index(deepnovo_config.col_file)
             feature_area_index = header.index(deepnovo_config.col_feature_area)
             for line in reader:
                 mass = (float(line[mz_index]) - deepnovo_config.mass_H) * float(line[z_index])
@@ -153,11 +173,12 @@ class DeepNovoTrainDataset(Dataset):
                     skipped_by_length += 1
                     logger.debug(f"{line[seq_index]} skipped by length")
                     continue
-                new_feature = DDAFeature(feature_id=line[feature_id_index],
+                new_feature = DDAFeature(feature_id=line[file_index] + line[scan_index],
                                          mz=float(line[mz_index]),
                                          z=float(line[z_index]),
                                          rt_mean=float(line[rt_mean_index]),
                                          peptide=peptide,
+                                         file=line[file_index],
                                          scan=line[scan_index],
                                          mass=mass,
                                          feature_area=line[feature_area_index])
@@ -169,42 +190,49 @@ class DeepNovoTrainDataset(Dataset):
         return len(self.feature_list)
 
     def close(self):
-        self.input_spectrum_handle.close()
+        for file_name in self.input_spectrum_handle.keys():
+            handle = self.input_spectrum_handle[file_name]
+            handle.close()
 
-    def _parse_spectrum_ion(self):
+    def _parse_spectrum_ion(self, handle):
         mz_list = []
         intensity_list = []
-        line = self.input_spectrum_handle.readline()
+        line = handle.readline()
         while not "END IONS" in line:
             mz, intensity = re.split(' |\r|\n', line)[:2]
             mz_float = float(mz)
             intensity_float = float(intensity)
             # skip an ion if its mass > MZ_MAX
             if mz_float > deepnovo_config.MZ_MAX:
-                line = self.input_spectrum_handle.readline()
+                line = handle.readline()
                 continue
             mz_list.append(mz_float)
             intensity_list.append(intensity_float)
-            line = self.input_spectrum_handle.readline()
+            line = handle.readline()
         return mz_list, intensity_list
 
     def _get_feature(self, feature: DDAFeature) -> TrainData:
-        spectrum_location = self.spectrum_location_dict[feature.scan]
-        self.input_spectrum_handle.seek(spectrum_location)
+        spectrum_location = self.spectrum_location_dict[(feature.file + '.refined.mgf', feature.scan)]
+        handle = self.input_spectrum_handle[feature.file + '.refined.mgf']
+        handle.seek(spectrum_location)
         # parse header lines
-        line = self.input_spectrum_handle.readline()
+        line = handle.readline()
         assert "BEGIN IONS" in line, "Error: wrong input BEGIN IONS"
-        line = self.input_spectrum_handle.readline()
+        line = handle.readline()
         assert "TITLE=" in line, "Error: wrong input TITLE="
-        line = self.input_spectrum_handle.readline()
+        line = handle.readline()
         assert "PEPMASS=" in line, "Error: wrong input PEPMASS="
-        line = self.input_spectrum_handle.readline()
+        line = handle.readline()
         assert "CHARGE=" in line, "Error: wrong input CHARGE="
-        line = self.input_spectrum_handle.readline()
+        line = handle.readline()
+        assert "RAWFILE=" in line, "Error: wrong input RAWFILE="
+        line = handle.readline()
+        assert "RAWSCANS=" in line, "Error: wrong input RAWSCANS="
+        line = handle.readline()
         assert "SCANS=" in line, "Error: wrong input SCANS="
-        line = self.input_spectrum_handle.readline()
+        line = handle.readline()
         assert "RTINSECONDS=" in line, "Error: wrong input RTINSECONDS="
-        mz_list, intensity_list = self._parse_spectrum_ion()
+        mz_list, intensity_list = self._parse_spectrum_ion(handle)
         peak_location, peak_intensity, spectrum_representation = process_peaks(mz_list, intensity_list, feature.mass)
 
         assert np.max(peak_intensity) < 1.0 + 1e-5
@@ -240,7 +268,11 @@ class DeepNovoTrainDataset(Dataset):
 
     def __getitem__(self, idx):
         if self.input_spectrum_handle is None:
-            self.input_spectrum_handle = open(self.spectrum_filename, 'r')
+            self.input_spectrum_handle = {}
+            spectrum_files = os.listdir(self.spectrum_foldername)
+            for spectrum_file in spectrum_files:
+                if spectrum_file.endswith('.mgf'):
+                    self.input_spectrum_handle[spectrum_file] = open(self.spectrum_foldername + spectrum_file, 'r')
         feature = self.feature_list[idx]
         return self._get_feature(feature)
 
@@ -346,22 +378,27 @@ def chunks(l, n: int):
 class DeepNovoDenovoDataset(DeepNovoTrainDataset):
     # override _get_feature method
     def _get_feature(self, feature: DDAFeature) -> DenovoData:
-        spectrum_location = self.spectrum_location_dict[feature.scan]
-        self.input_spectrum_handle.seek(spectrum_location)
+        spectrum_location = self.spectrum_location_dict[(feature.file + '.refined.mgf', feature.scan)]
+        handle = self.input_spectrum_handle[feature.file + '.refined.mgf']
+        handle.seek(spectrum_location)
         # parse header lines
-        line = self.input_spectrum_handle.readline()
+        line = handle.readline()
         assert "BEGIN IONS" in line, "Error: wrong input BEGIN IONS"
-        line = self.input_spectrum_handle.readline()
+        line = handle.readline()
         assert "TITLE=" in line, "Error: wrong input TITLE="
-        line = self.input_spectrum_handle.readline()
+        line = handle.readline()
         assert "PEPMASS=" in line, "Error: wrong input PEPMASS="
-        line = self.input_spectrum_handle.readline()
+        line = handle.readline()
         assert "CHARGE=" in line, "Error: wrong input CHARGE="
-        line = self.input_spectrum_handle.readline()
+        line = handle.readline()
+        assert "RAWFILE=" in line, "Error: wrong input RAWFILE="
+        line = handle.readline()
+        assert "RAWSCANS=" in line, "Error: wrong input RAWSCANS="
+        line = handle.readline()
         assert "SCANS=" in line, "Error: wrong input SCANS="
-        line = self.input_spectrum_handle.readline()
+        line = handle.readline()
         assert "RTINSECONDS=" in line, "Error: wrong input RTINSECONDS="
-        mz_list, intensity_list = self._parse_spectrum_ion()
+        mz_list, intensity_list = self._parse_spectrum_ion(handle)
         peak_location, peak_intensity, spectrum_representation = process_peaks(mz_list, intensity_list, feature.mass)
 
         return DenovoData(peak_location=peak_location,

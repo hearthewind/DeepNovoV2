@@ -1,6 +1,8 @@
 .project
 .pydevproject
 ABRF_DDA/*
+westlake_train_data_with_acetylation/*
+westlake_test_data_with_acetylation/*
 *.log
 __pycache__/*
 build/*

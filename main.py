@@ -24,7 +24,7 @@ def main():
     elif deepnovo_config.args.search_denovo:
         logger.info("denovo mode")
         data_reader = DeepNovoDenovoDataset(feature_filename=deepnovo_config.denovo_input_feature_file,
-                                            spectrum_filename=deepnovo_config.denovo_input_spectrum_file)
+                                            spectrum_foldername=deepnovo_config.denovo_input_spectrum_file)
         denovo_worker = IonCNNDenovo(deepnovo_config.MZ_MAX,
                                      deepnovo_config.knapsack_file,
                                      beam_size=deepnovo_config.args.beam_size)
