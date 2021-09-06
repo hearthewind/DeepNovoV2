@@ -79,18 +79,18 @@ vocab_reverse = ['A',
                  'N',
                  'N(Deamidation)',
                  'N(Acetylation)',
-                 'N(Acetylation,Deamidation)',
+                 'N(Acetylation)(Deamidation)',
                  'D',
                  'D(Acetylation)',
                  #~ 'C',
                  'C(Carbamidomethylation)',
-                 'C(Carbamidomethylation,Acetylation)',
+                 'C(Carbamidomethylation)(Acetylation)',
                  'E',
                  'E(Acetylation)',
                  'Q',
                  'Q(Deamidation)',
                  'Q(Acetylation)',
-                 'Q(Acetylation,Deamidation)',
+                 'Q(Acetylation)(Deamidation)',
                  'G',
                  'G(Acetylation)',
                  'H',
@@ -104,7 +104,7 @@ vocab_reverse = ['A',
                  'M',
                  'M(Oxidation)',
                  'M(Acetylation)',
-                 'M(Acetylation,Oxidation)',
+                 'M(Acetylation)(Oxidation)',
                  'F',
                  'F(Acetylation)',
                  'P',
@@ -153,19 +153,19 @@ mass_AA = {'_PAD': 0.0,
            'N': 114.04293, # 2
            'N(Deamidation)': 115.02695,
            'N(Acetylation)': 156.05293,
-           'N(Acetylation,Deamidation)': 157.03695,
+           'N(Acetylation)(Deamidation)': 157.03695,
            'D': 115.02694, # 3
            'D(Acetylation)': 157.03694,
            #~ 'C(Carbamidomethylation)': 103.00919, # 4
            'C(Carbamidomethylation)': 160.03065, # C(+57.02)
-           'C(Carbamidomethylation,Acetylation)': 202.04065,
+           'C(Carbamidomethylation)(Acetylation)': 202.04065,
            #~ 'C(Carbamidomethylation)': 161.01919, # C(+58.01) # orbi
            'E': 129.04259, # 5
            'E(Acetylation)': 171.05259,
            'Q': 128.05858, # 6
            'Q(Deamidation)': 129.0426,
            'Q(Acetylation)': 170.06858,
-           'Q(Acetylation,Deamidation)': 171.0526,
+           'Q(Acetylation)(Deamidation)': 171.0526,
            'G': 57.02146, # 7
            'G(Acetylation)': 99.03146,
            'H': 137.05891, # 8
@@ -179,7 +179,7 @@ mass_AA = {'_PAD': 0.0,
            'M': 131.04049, # 12
            'M(Oxidation)': 147.0354,
            'M(Acetylation)': 173.05049,
-           'M(Acetylation,Oxidation)': 189.0454,
+           'M(Acetylation)(Oxidation)': 189.0454,
            'F': 147.06841, # 13
            'F(Acetylation)': 189.07841,
            'P': 97.05276, # 14

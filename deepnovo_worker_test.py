@@ -318,7 +318,7 @@ class WorkerTest(object):
         predicted["scan_list_middle"] = line_split[col_scan_list_middle]
         predicted["scan_list_original"] = line_split[col_scan_list_original]
         if line_split[col_sequence]: # not empty sequence
-          predicted["sequence"] = [re.split(',', x)
+          predicted["sequence"] = [re.split(',', x) #TODO the problem is here
                                    for x in re.split(';', line_split[col_sequence])]
           predicted["score"] = [float(x)
                                 for x in re.split(';', line_split[col_score])]
@@ -413,25 +413,25 @@ class WorkerTest(object):
     while index < raw_sequence_len:
       if raw_sequence[index] == "(":
         if peptide[-1] == "C" and raw_sequence[index:index + 16] == "(+57.02)(+42.01)":
-          peptide[-1] = "C(Carbamidomethylation,Acetylation)"
+          peptide[-1] = "C(Carbamidomethylation)(Acetylation)"
           index += 16
         elif peptide[-1] == "C" and raw_sequence[index:index + 8] == "(+57.02)":
           peptide[-1] = "C(Carbamidomethylation)"
           index += 8
         elif peptide[-1] == 'M' and raw_sequence[index:index + 16] == "(+42.01)(+15.99)":
-          peptide[-1] = 'M(Acetylation,Oxidation)'
+          peptide[-1] = 'M(Acetylation)(Oxidation)'
           index += 16
         elif peptide[-1] == 'M' and raw_sequence[index:index + 8] == "(+15.99)":
           peptide[-1] = 'M(Oxidation)'
           index += 8
         elif peptide[-1] == 'N' and raw_sequence[index:index + 15] == "(+42.01)(+0.98)":
-          peptide[-1] = 'N(Acetylation,Deamidation)'
+          peptide[-1] = 'N(Acetylation)(Deamidation)'
           index += 15
         elif peptide[-1] == 'N' and raw_sequence[index:index + 7] == "(+0.98)":
           peptide[-1] = 'N(Deamidation)'
           index += 7
         elif peptide[-1] == 'Q' and raw_sequence[index:index + 15] == "(+42.01)(+0.98)":
-          peptide[-1] = 'Q(Acetylation,Deamidation)'
+          peptide[-1] = 'Q(Acetylation)(Deamidation)'
           index += 15
         elif peptide[-1] == 'Q' and raw_sequence[index:index + 7] == "(+0.98)":
           peptide[-1] = 'Q(Deamidation)'
