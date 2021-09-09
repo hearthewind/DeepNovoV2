@@ -45,7 +45,11 @@ class WorkerTest(object):
     print("multifea_file = {0:s}".format(self.multifea_file))
 
     self.target_dict = {}
+    self.target_dict_acetylation = {}
+    self.target_dict_no_acetylation = {}
     self.predicted_list = []
+    self.predicted_list_acetylation = []
+    self.predicted_list_no_acetylation= []
 
 
   def test_accuracy(self, db_peptide_list=None):
@@ -84,6 +88,12 @@ class WorkerTest(object):
     self._get_target()
     target_count_total = len(self.target_dict)
     target_len_total = sum([len(x) for x in self.target_dict.values()])
+    
+    target_count_total_acetylation = len(self.target_dict_acetylation)
+    target_len_total_acetylation = sum([len(x) for x in self.target_dict_acetylation.values()])
+
+    target_count_total_no_acetylation = len(self.target_dict_no_acetylation)
+    target_len_total_no_acetylation = sum([len(x) for x in self.target_dict_no_acetylation.values()]) #TODO find out if this is neccessary
 
     # this part is tricky!
     # some target peptides are reported by PEAKS DB but not found in
@@ -91,6 +101,8 @@ class WorkerTest(object):
     # if db_peptide_list is given, we only consider those target peptides,
     #   otherwise, use all target peptides
     target_dict_db = {}
+    target_dict_db_acetylation = {}
+    target_dict_db_no_acetylation = {}
     if db_peptide_list is not None:
       for feature_id, target in self.target_dict.items():
         target_simplied = target
@@ -102,20 +114,69 @@ class WorkerTest(object):
           target_dict_db[feature_id] = target
         else:
           print("target not found: ", target_simplied)
+          
+      for feature_id, target in self.target_dict_acetylation.items():
+        target_simplied = target
+        # remove the extension 'mod' from variable modifications
+        target_simplied = ['M' if x=='M(Oxidation)' else x for x in target_simplied]
+        target_simplied = ['N' if x=='N(Deamidation)' else x for x in target_simplied]
+        target_simplied = ['Q' if x=='Q(Deamidation)' else x for x in target_simplied]
+        if target_simplied in db_peptide_list:
+          target_dict_db_acetylation[feature_id] = target
+        else:
+          print("target not found: ", target_simplied)
+          
+      for feature_id, target in self.target_dict_no_acetylation.items():
+        target_simplied = target
+        # remove the extension 'mod' from variable modifications
+        target_simplied = ['M' if x=='M(Oxidation)' else x for x in target_simplied]
+        target_simplied = ['N' if x=='N(Deamidation)' else x for x in target_simplied]
+        target_simplied = ['Q' if x=='Q(Deamidation)' else x for x in target_simplied]
+        if target_simplied in db_peptide_list:
+          target_dict_db_no_acetylation[feature_id] = target
+        else:
+          print("target not found: ", target_simplied)
     else:
       target_dict_db = self.target_dict
+      target_dict_db_acetylation = self.target_dict_acetylation
+      target_dict_db_no_acetylation = self.target_dict_no_acetylation
+
     target_count_db = len(target_dict_db)
     target_len_db = sum([len(x) for x in target_dict_db.values()])
+    
+    target_count_db_acetylation = len(target_dict_db_acetylation)
+    target_len_db_acetylation = sum([len(x) for x in target_dict_db_acetylation.values()])
+    
+    target_count_db_no_acetylation = len(target_dict_db_no_acetylation)
+    target_len_db_no_acetylation = sum([len(x) for x in target_dict_db_no_acetylation.values()])
 
     # we also skip target peptides with precursor_mass > MZ_MAX
     target_dict_db_mass = {}
+    target_dict_db_mass_acetylation = {}
+    target_dict_db_mass_no_acetylation = {}
+    
     for feature_id, peptide in target_dict_db.items():
       if self._compute_peptide_mass(peptide) <= self.MZ_MAX:
         target_dict_db_mass[feature_id] = peptide
+        
+    for feature_id, peptide in target_dict_db_acetylation.items():
+      if self._compute_peptide_mass(peptide) <= self.MZ_MAX:
+        target_dict_db_mass_acetylation[feature_id] = peptide
+        
+    for feature_id, peptide in target_dict_db_no_acetylation.items():
+      if self._compute_peptide_mass(peptide) <= self.MZ_MAX:
+        target_dict_db_mass_no_acetylation[feature_id] = peptide
+        
     target_count_db_mass = len(target_dict_db_mass)
     target_len_db_mass = sum([len(x) for x in target_dict_db_mass.values()])
+    
+    target_count_db_mass_acetylation = len(target_dict_db_mass_acetylation)
+    target_len_db_mass_acetylation = sum([len(x) for x in target_dict_db_mass_acetylation.values()])
+    
+    target_count_db_mass_no_acetylation = len(target_dict_db_mass_no_acetylation)
+    target_len_db_mass_no_acetylation = sum([len(x) for x in target_dict_db_mass_no_acetylation.values()])
 
-    # read predicted peptides from deepnovo or peaks
+    # read predicted peptides from deepnovo or peaks  #TOOD I am here
     if deepnovo_config.predicted_format == "deepnovo":
       self._get_predicted()
     else:
@@ -130,9 +191,23 @@ class WorkerTest(object):
     # the recall is calculated on remaining peptides
     recall_AA_total = 0.0
     recall_peptide_total = 0.0
+    
+    predicted_count_mass_acetylation = len(self.predicted_list_acetylation)
+    predicted_count_mass_db_acetylation = 0
+    predicted_len_mass_db_acetylation = 0
+    predicted_only_acetylation = 0
+    recall_AA_total_acetylation = 0.0
+    recall_peptide_total_acetylation = 0.0
+    
+    predicted_count_mass_no_acetylation = len(self.predicted_list_acetylation)
+    predicted_count_mass_db_no_acetylation = 0
+    predicted_len_mass_db_no_acetylation = 0
+    predicted_only_no_acetylation = 0
+    recall_AA_total_no_acetylation = 0.0
+    recall_peptide_total_no_acetylation = 0.0
 
     # record scan with multiple features
-    scan_dict = {}
+    scan_dict = {} 
 
     for index, predicted in enumerate(self.predicted_list):
 
@@ -216,6 +291,106 @@ class WorkerTest(object):
                       feature_scan_list_original]
         print_row = "\t".join(print_list)
         print(print_row, file=denovo_only_handle, end="\n")
+        
+    scan_dict_acetylation = {}
+    for index, predicted in enumerate(self.predicted_list_acetylation):
+
+      feature_id = predicted["feature_id"]
+      feature_area = str(predicted["feature_area"])
+      feature_scan_list_middle = predicted["scan_list_middle"]
+      feature_scan_list_original = predicted["scan_list_original"]
+      if feature_scan_list_original:
+        for scan in re.split(';|\r|\n', feature_scan_list_original):
+          if scan in scan_dict_acetylation:
+            scan_dict_acetylation[scan]["feature_count"] += 1
+            scan_dict_acetylation[scan]["feature_list"].append(feature_id)
+          else:
+            scan_dict_acetylation[scan] = {}
+            scan_dict_acetylation[scan]["feature_count"] = 1
+            scan_dict_acetylation[scan]["feature_list"] = [feature_id]
+
+      if feature_id in target_dict_db_mass_acetylation:
+
+        predicted_count_mass_db_acetylation += 1
+
+        target = target_dict_db_mass_acetylation[feature_id]
+        target_len= len(target)
+
+        # if >= 1 denovo peptides reported, calculate the best accuracy
+        best_recall_AA_acetylation = 0
+        best_predicted_sequence = predicted["sequence"][0]
+        best_predicted_score = predicted["score"][0]
+        for predicted_sequence, predicted_score in zip(predicted["sequence"], predicted["score"]):
+          predicted_AA_id = [deepnovo_config.vocab[x] for x in predicted_sequence]
+          target_AA_id = [deepnovo_config.vocab[x] for x in target]
+          recall_AA_acetylation = self._match_AA_novor(target_AA_id, predicted_AA_id)
+          if (recall_AA_acetylation > best_recall_AA_acetylation
+              or (recall_AA_acetylation == best_recall_AA_acetylation and predicted_score > best_predicted_score)):
+            best_recall_AA_acetylation = recall_AA_acetylation
+            best_predicted_sequence = predicted_sequence[:]
+            best_predicted_score = predicted_score
+        recall_AA_acetylation = best_recall_AA_acetylation
+        predicted_sequence = best_predicted_sequence[:]
+        predicted_score = best_predicted_score
+
+        recall_AA_total_acetylation += recall_AA_acetylation
+        if recall_AA_acetylation == target_len:
+          recall_peptide_total_acetylation += 1
+        predicted_len = len(predicted_sequence)
+        predicted_len_mass_db_acetylation += predicted_len
+
+      else:
+        predicted_only_acetylation += 1
+        
+    scan_dict_no_acetylation = {}
+    for index, predicted in enumerate(self.predicted_list_no_acetylation):
+
+      feature_id = predicted["feature_id"]
+      feature_area = str(predicted["feature_area"])
+      feature_scan_list_middle = predicted["scan_list_middle"]
+      feature_scan_list_original = predicted["scan_list_original"]
+      if feature_scan_list_original:
+        for scan in re.split(';|\r|\n', feature_scan_list_original):
+          if scan in scan_dict_no_acetylation:
+            scan_dict_no_acetylation[scan]["feature_count"] += 1
+            scan_dict_no_acetylation[scan]["feature_list"].append(feature_id)
+          else:
+            scan_dict_no_acetylation[scan] = {}
+            scan_dict_no_acetylation[scan]["feature_count"] = 1
+            scan_dict_no_acetylation[scan]["feature_list"] = [feature_id]
+
+      if feature_id in target_dict_db_mass_no_acetylation:
+
+        predicted_count_mass_db_no_acetylation += 1
+
+        target = target_dict_db_mass_no_acetylation[feature_id]
+        target_len= len(target)
+
+        # if >= 1 denovo peptides reported, calculate the best accuracy
+        best_recall_AA_no_acetylation = 0
+        best_predicted_sequence = predicted["sequence"][0]
+        best_predicted_score = predicted["score"][0]
+        for predicted_sequence, predicted_score in zip(predicted["sequence"], predicted["score"]):
+          predicted_AA_id = [deepnovo_config.vocab[x] for x in predicted_sequence]
+          target_AA_id = [deepnovo_config.vocab[x] for x in target]
+          recall_AA_no_acetylation = self._match_AA_novor(target_AA_id, predicted_AA_id)
+          if (recall_AA_no_acetylation > best_recall_AA_no_acetylation
+              or (recall_AA_no_acetylation == best_recall_AA_no_acetylation and predicted_score > best_predicted_score)):
+            best_recall_AA_no_acetylation = recall_AA_no_acetylation
+            best_predicted_sequence = predicted_sequence[:]
+            best_predicted_score = predicted_score
+        recall_AA_no_acetylation = best_recall_AA_no_acetylation
+        predicted_sequence = best_predicted_sequence[:]
+        predicted_score = best_predicted_score
+
+        recall_AA_total_no_acetylation += recall_AA_no_acetylation
+        if recall_AA_no_acetylation == target_len:
+          recall_peptide_total_no_acetylation += 1
+        predicted_len = len(predicted_sequence)
+        predicted_len_mass_db_no_acetylation += predicted_len
+
+      else:
+        predicted_only_no_acetylation += 1
 
     accuracy_handle.close()
     denovo_only_handle.close()
@@ -255,6 +430,9 @@ class WorkerTest(object):
         print_row = "\t".join(print_list)
         print(print_row, file=handle, end="\n")
 
+    print("For All Peptides")
+    print()
+    
     print("target_count_total = {0:d}".format(target_count_total))
     print("target_len_total = {0:d}".format(target_len_total))
     print("target_count_db = {0:d}".format(target_count_db))
@@ -277,6 +455,60 @@ class WorkerTest(object):
     print("recall_peptide_db_mass = {0:.4f}".format(recall_peptide_total / target_count_db_mass))
     print("precision_AA_mass_db  = {0:.4f}".format(recall_AA_total / predicted_len_mass_db))
     print("precision_peptide_mass_db  = {0:.4f}".format(recall_peptide_total / predicted_count_mass_db))
+    print()
+    
+    print("For Acetylation Peptides")
+    print()
+    
+    print("target_count_total = {0:d}".format(target_count_total_acetylation))
+    print("target_len_total = {0:d}".format(target_len_total_acetylation))
+    print("target_count_db = {0:d}".format(target_count_db_acetylation))
+    print("target_len_db = {0:d}".format(target_len_db_acetylation))
+    print("target_count_db_mass: {0:d}".format(target_count_db_mass_acetylation))
+    print("target_len_db_mass: {0:d}".format(target_len_db_mass_acetylation))
+    print()
+
+    print("predicted_count_mass: {0:d}".format(predicted_count_mass_acetylation))
+    print("predicted_count_mass_db: {0:d}".format(predicted_count_mass_db_acetylation))
+    print("predicted_len_mass_db: {0:d}".format(predicted_len_mass_db_acetylation))
+    print("predicted_only: {0:d}".format(predicted_only_acetylation))
+    print()
+
+    print("recall_AA_total = {0:.4f}".format(recall_AA_total_acetylation / target_len_total_acetylation))
+    print("recall_AA_db = {0:.4f}".format(recall_AA_total_acetylation / target_len_db_acetylation))
+    print("recall_AA_db_mass = {0:.4f}".format(recall_AA_total_acetylation / target_len_db_mass_acetylation))
+    print("recall_peptide_total = {0:.4f}".format(recall_peptide_total_acetylation / target_count_total_acetylation))
+    print("recall_peptide_db = {0:.4f}".format(recall_peptide_total_acetylation / target_count_db_acetylation))
+    print("recall_peptide_db_mass = {0:.4f}".format(recall_peptide_total_acetylation / target_count_db_mass_acetylation))
+    print("precision_AA_mass_db  = {0:.4f}".format(recall_AA_total_acetylation / predicted_len_mass_db_acetylation))
+    print("precision_peptide_mass_db  = {0:.4f}".format(recall_peptide_total_acetylation / predicted_count_mass_db_acetylation))
+    print()
+    
+    print("For Non-Acetylation Peptides")
+    print()
+    
+    print("target_count_total = {0:d}".format(target_count_total_no_acetylation))
+    print("target_len_total = {0:d}".format(target_len_total_no_acetylation))
+    print("target_count_db = {0:d}".format(target_count_db_no_acetylation))
+    print("target_len_db = {0:d}".format(target_len_db_no_acetylation))
+    print("target_count_db_mass: {0:d}".format(target_count_db_mass_no_acetylation))
+    print("target_len_db_mass: {0:d}".format(target_len_db_mass_no_acetylation))
+    print()
+
+    print("predicted_count_mass: {0:d}".format(predicted_count_mass_no_acetylation))
+    print("predicted_count_mass_db: {0:d}".format(predicted_count_mass_db_no_acetylation))
+    print("predicted_len_mass_db: {0:d}".format(predicted_len_mass_db_no_acetylation))
+    print("predicted_only: {0:d}".format(predicted_only_no_acetylation))
+    print()
+
+    print("recall_AA_total = {0:.4f}".format(recall_AA_total_no_acetylation / target_len_total_no_acetylation))
+    print("recall_AA_db = {0:.4f}".format(recall_AA_total_no_acetylation / target_len_db_no_acetylation))
+    print("recall_AA_db_mass = {0:.4f}".format(recall_AA_total_no_acetylation / target_len_db_mass_no_acetylation))
+    print("recall_peptide_total = {0:.4f}".format(recall_peptide_total_no_acetylation / target_count_total_no_acetylation))
+    print("recall_peptide_db = {0:.4f}".format(recall_peptide_total_no_acetylation / target_count_db_no_acetylation))
+    print("recall_peptide_db_mass = {0:.4f}".format(recall_peptide_total_no_acetylation / target_count_db_mass_no_acetylation))
+    print("precision_AA_mass_db  = {0:.4f}".format(recall_AA_total_no_acetylation / predicted_len_mass_db_no_acetylation))
+    print("precision_peptide_mass_db  = {0:.4f}".format(recall_peptide_total_no_acetylation / predicted_count_mass_db_no_acetylation))
   
   
   def _compute_peptide_mass(self, peptide):
@@ -298,6 +530,9 @@ class WorkerTest(object):
     print("WorkerTest._get_predicted()")
 
     predicted_list = []
+    predicted_list_acetylation = []
+    predicted_list_no_acetylation = []
+    
     col_feature_id = deepnovo_config.pcol_feature_id
     col_feature_area = deepnovo_config.pcol_feature_area
     col_sequence = deepnovo_config.pcol_sequence
@@ -318,16 +553,28 @@ class WorkerTest(object):
         predicted["scan_list_middle"] = line_split[col_scan_list_middle]
         predicted["scan_list_original"] = line_split[col_scan_list_original]
         if line_split[col_sequence]: # not empty sequence
-          predicted["sequence"] = [re.split(',', x) #TODO the problem is here
+          predicted["sequence"] = [re.split(',', x) 
                                    for x in re.split(';', line_split[col_sequence])]
           predicted["score"] = [float(x)
                                 for x in re.split(';', line_split[col_score])]
-        else: 
+        else: #TODO the problem is here
           predicted["sequence"] = [[]]
           predicted["score"] = [-999]
+          
         predicted_list.append(predicted)
+        
+        feature_id = predicted["feature_id"]
+        target_sequence = self.target_dict[feature_id]
+        is_acetylation = "Acetylation" in target_sequence[0]
+        
+        if is_acetylation:
+          predicted_list_acetylation.append(predicted)
+        else:
+          predicted_list_no_acetylation.append(predicted)
 
     self.predicted_list = predicted_list
+    self.predicted_list_acetylation = predicted_list_acetylation
+    self.predicted_list_no_acetylation = predicted_list_no_acetylation
 
 
   def _get_predicted_peaks(self):
@@ -380,6 +627,8 @@ class WorkerTest(object):
     print("WorkerTest._get_target()")
 
     target_dict = {}
+    target_dict_acetylation = {}
+    target_dict_no_acetylation = {}
     with open(self.target_file, 'r') as handle:
       header_line = handle.readline()
       header = header_line.strip().split(',')
@@ -398,7 +647,13 @@ class WorkerTest(object):
         assert raw_sequence, "Error: wrong target format."
         peptide = self._parse_sequence(raw_sequence)
         target_dict[feature_id] = peptide
+        if 'Acetylation' in peptide[0]:
+          target_dict_acetylation[feature_id] = peptide
+        else:
+          target_dict_no_acetylation[feature_id] = peptide  
     self.target_dict = target_dict
+    self.target_dict_acetylation = target_dict_acetylation
+    self.target_dict_no_acetylation = target_dict_no_acetylation
 
 
   def _parse_sequence(self, raw_sequence):
