@@ -265,7 +265,7 @@ print("num_units ", num_units)
 
 dropout_rate = 0.25
 
-batch_size = 32
+batch_size = 16 # TODO 32
 num_workers = 6
 print("batch_size ", batch_size)
 
@@ -297,15 +297,15 @@ print("max_gradient_norm ", max_gradient_norm)
 knapsack_file = "knapsack.npy"
 topk_output = 1
 # training/testing/decoding files
-input_spectrum_file_train = "./westlake_test_data_with_acetylation/"
-input_feature_file_train = "./westlake_test_data_with_acetylation/db.psms.csv"
-input_spectrum_file_valid = "./westlake_test_data_with_acetylation/"
-input_feature_file_valid = "./westlake_test_data_with_acetylation/db.psms.csv"
-input_spectrum_file_test = "./westlake_test_data_with_acetylation/"
-input_feature_file_test = "./westlake_test_data_with_acetylation/db.psms.csv"
+input_spectrum_file_train = "/home/m/data/DeepNovoAcetylation/new_data_original/"
+input_feature_file_train = "/home/m/data/DeepNovoAcetylation/new_data_original/db.psms.train.csv"
+input_spectrum_file_valid = "/home/m/data/DeepNovoAcetylation/new_data_original/"
+input_feature_file_valid = "/home/m/data/DeepNovoAcetylation/new_data_original/db.psms.valid.csv"
+input_spectrum_file_test = "/home/m/data/DeepNovoAcetylation/new_data_original/"
+input_feature_file_test = "/home/m/data/DeepNovoAcetylation/new_data_original/db.psms.test.csv"
 # denovo files
-denovo_input_spectrum_file = "./westlake_test_data_with_acetylation/"
-denovo_input_feature_file = "./westlake_test_data_with_acetylation/db.psms.csv"
+denovo_input_spectrum_file = "/home/m/data/DeepNovoAcetylation/new_data_original/"
+denovo_input_feature_file = "/home/m/data/DeepNovoAcetylation/new_data_original/db.psms.test.csv"
 
 denovo_output_file = denovo_input_feature_file + ".deepnovo_denovo"
 

@@ -10,3 +10,4 @@ build/*
 *.so
 train/*
 *.npy
+.ipynb_checkpoints/*
